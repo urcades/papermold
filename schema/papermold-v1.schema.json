@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/urcades/papermold/main/schema/papermold-v1.schema.json",
+  "title": "papermold/v1 profile document",
+  "description": "Consumer-authored profiles for structural conformance of paper-doll bodies. A profile is a stencil: name-anchored per-vessel demands (exists, ports, acceptsAtLeast, containsAtLeast, conformsTo, forbids) plus a profile-level atLeast threshold. This schema captures the structural laws of papermold/v1: shape, ids, known keys, sides, literal-true exists, non-empty demands and token lists. Three constraints require evaluation beyond schema and are specified in docs/spec.md: every conformsTo.profile must name a profile in the same document (references never cross documents; cycles are legal and terminate because conformance descends into strictly smaller embedded bodies); atLeast.n must not exceed atLeast.of.length; and the judgment itself — judge(body, document, profileId) — which checks a kernel-valid body against a profile's clauses using the kernel's matches() semantics, one-sided literal port comparison, and open-vessel (absent accepts) admission. Profiles judge structure only: no clause can read ContainedElement.data.",
+  "type": "object",
+  "required": [
+    "protocol",
+    "profiles"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "protocol": {
+      "const": "papermold/v1"
+    },
+    "profiles": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]*$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/profile"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "side": {
+      "enum": [
+        "top",
+        "right",
+        "bottom",
+        "left"
+      ]
+    },
+    "portAddress": {
+      "type": "object",
+      "required": [
+        "vessel",
+        "side"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "vessel": {
+          "$ref": "#/$defs/id"
+        },
+        "side": {
+          "$ref": "#/$defs/side"
+        }
+      }
+    },
+    "acceptToken": {
+      "type": "object",
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/id"
+        },
+        "type": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "tokenList": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/acceptToken"
+      }
+    },
+    "vesselDemand": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "exists": {
+          "const": true
+        },
+        "ports": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": false,
+          "properties": {
+            "top": {
+              "$ref": "#/$defs/portAddress"
+            },
+            "right": {
+              "$ref": "#/$defs/portAddress"
+            },
+            "bottom": {
+              "$ref": "#/$defs/portAddress"
+            },
+            "left": {
+              "$ref": "#/$defs/portAddress"
+            }
+          }
+        },
+        "acceptsAtLeast": {
+          "$ref": "#/$defs/tokenList"
+        },
+        "containsAtLeast": {
+          "$ref": "#/$defs/tokenList"
+        },
+        "conformsTo": {
+          "type": "object",
+          "required": [
+            "token",
+            "profile"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "token": {
+              "$ref": "#/$defs/acceptToken"
+            },
+            "profile": {
+              "$ref": "#/$defs/id"
+            }
+          }
+        },
+        "forbids": {
+          "$ref": "#/$defs/tokenList"
+        }
+      }
+    },
+    "atLeastCheck": {
+      "type": "object",
+      "required": [
+        "vessel",
+        "check"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "vessel": {
+          "$ref": "#/$defs/id"
+        },
+        "check": {
+          "$ref": "#/$defs/vesselDemand"
+        }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "vessels": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/vesselDemand"
+          }
+        },
+        "atLeast": {
+          "type": "object",
+          "required": [
+            "n",
+            "of"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "n": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "of": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/atLeastCheck"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

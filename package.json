@@ -1,0 +1,58 @@
+{
+  "name": "papermold",
+  "version": "0.1.0",
+  "private": false,
+  "license": "MIT",
+  "description": "A TypeScript protocol library for structural conformance of paperdoll bodies: consumer-authored profiles, judged.",
+  "author": "Edouard Urcades <edouard@urcad.es>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/urcades/papermold.git"
+  },
+  "bugs": {
+    "url": "https://github.com/urcades/papermold/issues"
+  },
+  "homepage": "https://github.com/urcades/papermold#readme",
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "docs",
+    "schema",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "papermold",
+    "paperdoll",
+    "profile",
+    "conformance",
+    "validation",
+    "game-dev",
+    "typescript"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepack": "npm run typecheck && npm test && npm run build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "paperdoll": "^0.8.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}
