@@ -1,6 +1,6 @@
 {
   "name": "papermold",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": false,
   "license": "MIT",
   "description": "A TypeScript protocol library for structural conformance of paperdoll bodies: consumer-authored profiles, judged.",
@@ -49,6 +49,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "paperchain": "^0.1.0",
     "paperdoll": "^0.8.2"
   },
   "devDependencies": {

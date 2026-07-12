@@ -116,6 +116,12 @@ The document is `{ protocol: "papermold/v1", profiles: { "living-human": { ... }
 
 Profiles-of-scenes ("a valid trade" as a conformance judgment over a paperchain scene) are conceivable and deferred — bodies first, on the same one-consumer-at-a-time discipline as everything else in the roster.
 
+> **Resolved 2026-07-11.** The consumer arrived — paperdoll-viewer's versus
+> mode ("armed", "engaged", "disarmed" as judgments over a two-combatant
+> scene) — and profiles-of-scenes shipped as **papermold/v2** (`docs/spec.md`,
+> second section). The one-consumer-at-a-time discipline held: the vocabulary
+> is exactly what versus mode exercised, nothing speculative.
+
 ### 5. Conformance is opt-in, always
 
 Claiming `type: "mech"` never requires conforming to a mech profile. Nominal trust stands, exactly as the kernel RFC's resolved questions record it. Profiles are a judgment consumers *invoke*; they are never wired into paperdoll validity, and no future version should wire them in. A body is paperdoll-valid or it is not — one universal judgment; it *additionally* conforms to zero or more profiles — any number of consumer-owned judgments. The rejected alternative (validity conditional on declared type) would make the kernel's laws mean different things for different bodies, dissolving the universality that makes a paperdoll validator portable.

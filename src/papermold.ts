@@ -108,13 +108,24 @@ export function validateProfiles(input: unknown): ProtocolError[] {
     return errors;
   }
 
+  validateProfilesRecord(input.profiles, errors);
+
+  return errors;
+}
+
+/**
+ * The per-profile structural walk plus the dangling-reference pass, shared
+ * with the papermold/v2 document kind (whose `profiles` half is this grammar
+ * verbatim). Module-level export only — not part of the public surface.
+ */
+export function validateProfilesRecord(profiles: Record<string, unknown>, errors: ProtocolError[]): void {
   // conformsTo references resolve within this document only (pre-RFC
   // decision 4); they are collected during the structural walk and checked
   // for danglers once every profile id is known. Cycles are legal — see
   // judgeDemand for the termination argument.
   const references: { path: string; profile: string }[] = [];
 
-  for (const [profileId, profile] of Object.entries(input.profiles)) {
+  for (const [profileId, profile] of Object.entries(profiles)) {
     const path = `$.profiles.${profileId}`;
     if (!isId(profileId)) {
       errors.push({
@@ -126,15 +137,13 @@ export function validateProfiles(input: unknown): ProtocolError[] {
   }
 
   for (const reference of references) {
-    if (!Object.prototype.hasOwnProperty.call(input.profiles, reference.profile)) {
+    if (!Object.prototype.hasOwnProperty.call(profiles, reference.profile)) {
       errors.push({
         path: reference.path,
         message: `References missing profile "${reference.profile}"; conformsTo resolves within this document only.`
       });
     }
   }
-
-  return errors;
 }
 
 function validateProfile(
@@ -335,7 +344,12 @@ export function conforms(body: Body, document: PapermoldDocument, profileId: str
   return judge(body, document, profileId).length === 0;
 }
 
-function judgeProfile(body: Body, document: PapermoldDocument, profileId: string): ProtocolError[] {
+/**
+ * The validated-input judgment walk, shared with the papermold/v2 scene
+ * judgment (body demands re-wrap a v2 document's `profiles` half into a v1
+ * document and land here). Module-level export only.
+ */
+export function judgeProfile(body: Body, document: PapermoldDocument, profileId: string): ProtocolError[] {
   const errors: ProtocolError[] = [];
   const profile = document.profiles[profileId] as Profile;
   const profilePath = `$.profiles.${profileId}`;

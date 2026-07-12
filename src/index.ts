@@ -16,6 +16,30 @@ export type {
   VesselDemand
 } from "./papermold.js";
 
+export {
+  PAPERMOLD_SCENE_PROTOCOL,
+  assertSceneProfiles,
+  conformsBody,
+  conformsScene,
+  judgeBody,
+  judgeScene,
+  parseSceneProfiles,
+  validateSceneProfiles
+} from "./scenes.js";
+
+export type {
+  BodyDemand,
+  EndpointFilter,
+  ForAllBodiesCheck,
+  KindDemand,
+  PapermoldSceneDocument,
+  RelationBan,
+  RelationDemand,
+  SceneProfile
+} from "./scenes.js";
+
+export type { BodyName, KindDeclaration, KindId, Relation, Scene, SceneAddress } from "paperchain";
+
 export { formatProtocolErrors } from "paperdoll";
 
 export type {

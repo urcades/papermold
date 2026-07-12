@@ -8,5 +8,5 @@
     "outDir": "dist",
     "sourceMap": true
   },
-  "include": ["src/index.ts", "src/papermold.ts"]
+  "include": ["src/index.ts", "src/papermold.ts", "src/scenes.ts"]
 }

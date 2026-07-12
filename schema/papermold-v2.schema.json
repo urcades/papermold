@@ -1,0 +1,398 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/urcades/papermold/main/schema/papermold-v2.schema.json",
+  "title": "papermold/v2 scene profile document",
+  "description": "Consumer-authored profiles for structural conformance of paperchain scenes, alongside a body-profile half that is the papermold/v1 grammar verbatim. A scene profile judges a scene through five clause families: named body demands (exists, conformsTo), named kind demands (declared, field-subset declaration match), relation demands (anchor-prefix counting with atLeast/atMost bounds, role, and otherEndpoint filters), universal forAllBodies checks, and forbidsRelations bans. This schema captures the structural laws of papermold/v2: shape, ids, known keys, the anchor grammar, literal-true exists/declared, non-empty demands and entry lists, at-least-one-of atLeast/atMost on relation demands, and the prohibition of toMax on symmetric kind declarations. Constraints requiring evaluation beyond schema are specified in docs/spec.md: every conformsTo (in body demands, forAllBodies checks, and otherEndpoint filters, as well as in the v1 profiles half) must name a profile in this same document's profiles map — references resolve across the two namespaces of the document but never across documents; atLeast must not exceed atMost on a relation demand; and the judgment itself — judgeScene(scene, document, sceneProfileId) — with subtree-containment anchoring (an endpoint matches an anchor iff it equals it or extends it with a \"/\" segment), per-relation counting (a self-relation under one anchor counts once), role degrading to either-position on symmetric kinds, absence-dominates on missing bodies, undeclared kinds, and unresolvable anchors, and reference-only conformsTo whose nested failures are never forwarded. Profiles judge structure only: no clause can read ContainedElement.data.",
+  "type": "object",
+  "required": [
+    "protocol",
+    "profiles",
+    "sceneProfiles"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "protocol": {
+      "const": "papermold/v2"
+    },
+    "profiles": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]*$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/profile"
+      }
+    },
+    "sceneProfiles": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]*$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/sceneProfile"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "side": {
+      "enum": [
+        "top",
+        "right",
+        "bottom",
+        "left"
+      ]
+    },
+    "anchor": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(/[a-z][a-z0-9-]*)*$"
+    },
+    "portAddress": {
+      "type": "object",
+      "required": [
+        "vessel",
+        "side"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "vessel": {
+          "$ref": "#/$defs/id"
+        },
+        "side": {
+          "$ref": "#/$defs/side"
+        }
+      }
+    },
+    "acceptToken": {
+      "type": "object",
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/id"
+        },
+        "type": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "tokenList": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/acceptToken"
+      }
+    },
+    "vesselDemand": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "exists": {
+          "const": true
+        },
+        "ports": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": false,
+          "properties": {
+            "top": {
+              "$ref": "#/$defs/portAddress"
+            },
+            "right": {
+              "$ref": "#/$defs/portAddress"
+            },
+            "bottom": {
+              "$ref": "#/$defs/portAddress"
+            },
+            "left": {
+              "$ref": "#/$defs/portAddress"
+            }
+          }
+        },
+        "acceptsAtLeast": {
+          "$ref": "#/$defs/tokenList"
+        },
+        "containsAtLeast": {
+          "$ref": "#/$defs/tokenList"
+        },
+        "conformsTo": {
+          "type": "object",
+          "required": [
+            "token",
+            "profile"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "token": {
+              "$ref": "#/$defs/acceptToken"
+            },
+            "profile": {
+              "$ref": "#/$defs/id"
+            }
+          }
+        },
+        "forbids": {
+          "$ref": "#/$defs/tokenList"
+        }
+      }
+    },
+    "atLeastCheck": {
+      "type": "object",
+      "required": [
+        "vessel",
+        "check"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "vessel": {
+          "$ref": "#/$defs/id"
+        },
+        "check": {
+          "$ref": "#/$defs/vesselDemand"
+        }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "vessels": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/vesselDemand"
+          }
+        },
+        "atLeast": {
+          "type": "object",
+          "required": [
+            "n",
+            "of"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "n": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "of": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/atLeastCheck"
+              }
+            }
+          }
+        }
+      }
+    },
+    "sceneProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bodies": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/bodyDemand"
+          }
+        },
+        "kinds": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/kindDemand"
+          }
+        },
+        "relations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/relationDemand"
+          }
+        },
+        "forAllBodies": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/forAllBodiesCheck"
+          }
+        },
+        "forbidsRelations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/relationBan"
+          }
+        }
+      }
+    },
+    "bodyDemand": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "exists": {
+          "const": true
+        },
+        "conformsTo": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "kindDemand": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "declared": {
+          "const": true
+        },
+        "declaration": {
+          "$ref": "#/$defs/kindDeclaration"
+        }
+      }
+    },
+    "kindDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "symmetric": {
+          "type": "boolean"
+        },
+        "irreflexive": {
+          "type": "boolean"
+        },
+        "fromMax": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "toMax": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "if": {
+        "properties": {
+          "symmetric": {
+            "const": true
+          }
+        },
+        "required": [
+          "symmetric"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "toMax"
+          ]
+        }
+      }
+    },
+    "relationDemand": {
+      "type": "object",
+      "required": [
+        "at",
+        "kind"
+      ],
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "atLeast"
+          ]
+        },
+        {
+          "required": [
+            "atMost"
+          ]
+        }
+      ],
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/anchor"
+        },
+        "kind": {
+          "$ref": "#/$defs/id"
+        },
+        "role": {
+          "enum": [
+            "from",
+            "to"
+          ]
+        },
+        "atLeast": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "atMost": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "otherEndpoint": {
+          "$ref": "#/$defs/endpointFilter"
+        }
+      }
+    },
+    "endpointFilter": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "prefix": {
+          "$ref": "#/$defs/anchor"
+        },
+        "conformsTo": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "forAllBodiesCheck": {
+      "type": "object",
+      "required": [
+        "check"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "excluding": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "check": {
+          "$ref": "#/$defs/bodyDemand"
+        }
+      }
+    },
+    "relationBan": {
+      "type": "object",
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/id"
+        },
+        "at": {
+          "$ref": "#/$defs/anchor"
+        }
+      }
+    }
+  }
+}

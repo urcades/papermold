@@ -89,6 +89,38 @@ All functions are pure; inputs are never mutated.
 
 There are no profile-editing operations: profiles are authored documents, not built incrementally. The entire surface is parse + judge.
 
+## Scene Profiles (papermold/v2)
+
+papermold/v2 extends the judgment from bodies to [paperchain](https://github.com/urcades/paperchain) scenes: "armed", "engaged", "a valid trade" as pure conformance judgments over a whole scene — its bodies, its kind declarations, and its relations. A `papermold/v2` document carries two namespaces: `profiles` (the v1 grammar verbatim) and `sceneProfiles`, whose clauses may reference the body profiles beside them (same document only, as ever).
+
+```ts
+import { PAPERMOLD_SCENE_PROTOCOL, conformsScene, judgeScene } from "papermold";
+import type { PapermoldSceneDocument } from "papermold";
+
+const doc: PapermoldSceneDocument = {
+  protocol: PAPERMOLD_SCENE_PROTOCOL,
+  profiles: {
+    combatant: { vessels: { torso: { forbids: [{ kind: "status", type: "dead" }] } } }
+  },
+  sceneProfiles: {
+    engaged: {
+      kinds: { fights: { declaration: { symmetric: true } } },
+      relations: [{ at: "red", kind: "fights", atLeast: 1, otherEndpoint: { prefix: "blue" } }],
+      forAllBodies: [{ excluding: ["pool"], check: { conformsTo: "combatant" } }]
+    },
+    disarmed: {
+      forbidsRelations: [{ kind: "grasps", at: "red" }]
+    }
+  }
+};
+
+conformsScene(scene, doc, "engaged"); // boolean; judgeScene(...) for the clause failures
+```
+
+The scene clauses: **`bodies`** (a named body exists / conforms to a body profile), **`kinds`** (a kind is declared / its declaration field-subset-matches — `fromMax: 1` demanded means declared and equal), **`relations`** (count relations of a kind touching an **anchor** — a body name or scene address, matched by subtree containment, so a sword sheathed inside the hand still counts as wielded by the hand — against `atLeast`/`atMost`, optionally restricted by `role` or an `otherEndpoint` filter), **`forAllBodies`** (a universal body check, with `excluding`), and **`forbidsRelations`** (no relation of a kind exists, optionally under an anchor). Every clause binds at most one implicit variable and clauses share none — no joins, no relation-graph queries; universal multiplicity ("every hand at most one sword") delegates to paperchain's declared budgets, which scene validity already enforces. `conformsTo` on the scene side is reference-only: a failing body yields one wrapper error, never the nested failures.
+
+v1 documents remain valid interchange and the v1 judgment is unchanged; only the v2 document kind depends on paperchain. See the papermold/v2 section of [`docs/spec.md`](docs/spec.md).
+
 ## What papermold does not do
 
 - **No data reads — permanently excluded, not deferred.** No clause can see `ContainedElement.data`. See the relay.
@@ -104,18 +136,18 @@ There are no profile-editing operations: profiles are authored documents, not bu
 - [paperfold](https://github.com/urcades/paperfold) — the dynamics layer: patches over bodies — diff, apply, compose, invert.
 - [papermold](https://github.com/urcades/papermold) — the judgment layer: this library.
 
-Profiles-of-scenes ("a valid trade" as a conformance judgment over a paperchain scene) are conceivable and deferred — bodies first, on the family's one-consumer-at-a-time discipline.
+Profiles-of-scenes shipped as papermold/v2 (above) once versus mode in paperdoll-viewer supplied the consumer — bodies first, then scenes, on the family's one-consumer-at-a-time discipline.
 
 ## Portability
 
-The protocol is not the TypeScript library — it is the document format plus the clause semantics. [`schema/papermold-v1.schema.json`](schema/papermold-v1.schema.json) is a JSON Schema (2020-12) capturing the structural laws; the semantics beyond schema expressiveness — same-document `conformsTo` resolution, `n <= of.length`, and the judgment itself — are specified in [`docs/spec.md`](docs/spec.md). Any language can validate profile documents and judge conformance against any paperdoll implementation.
+The protocol is not the TypeScript library — it is the document format plus the clause semantics. [`schema/papermold-v1.schema.json`](schema/papermold-v1.schema.json) and [`schema/papermold-v2.schema.json`](schema/papermold-v2.schema.json) are JSON Schemas (2020-12) capturing the structural laws of each document kind; the semantics beyond schema expressiveness — same-document `conformsTo` resolution, `n <= of.length`, `atLeast <= atMost`, and the judgments themselves — are specified in [`docs/spec.md`](docs/spec.md). Any language can validate profile documents and judge conformance against any paperdoll implementation.
 
 ## API
 
-- constants: `PAPERMOLD_PROTOCOL`
-- validation: `parseProfiles`, `assertProfiles`, `validateProfiles`, `formatProtocolErrors` (re-exported from paperdoll)
-- judgment: `judge`, `conforms`
-- types: `PapermoldDocument`, `Profile`, `VesselDemand`, `ConformsToDemand`, `AtLeast`, `AtLeastCheck`, plus re-exported kernel types (`AcceptToken`, `Body`, `ContainedElement`, `PortAddress`, `ProtocolError`, `Result`, `Side`, `Vessel`, `VesselId`)
+- constants: `PAPERMOLD_PROTOCOL`, `PAPERMOLD_SCENE_PROTOCOL`
+- validation: `parseProfiles`, `assertProfiles`, `validateProfiles`, `parseSceneProfiles`, `assertSceneProfiles`, `validateSceneProfiles`, `formatProtocolErrors` (re-exported from paperdoll)
+- judgment: `judge`, `conforms` (v1); `judgeScene`, `conformsScene`, `judgeBody`, `conformsBody` (v2)
+- types: `PapermoldDocument`, `Profile`, `VesselDemand`, `ConformsToDemand`, `AtLeast`, `AtLeastCheck`; v2's `PapermoldSceneDocument`, `SceneProfile`, `BodyDemand`, `KindDemand`, `RelationDemand`, `EndpointFilter`, `ForAllBodiesCheck`, `RelationBan`; plus re-exported kernel types (`AcceptToken`, `Body`, `ContainedElement`, `PortAddress`, `ProtocolError`, `Result`, `Side`, `Vessel`, `VesselId`) and paperchain types (`BodyName`, `KindDeclaration`, `KindId`, `Relation`, `Scene`, `SceneAddress`)
 
 Validation is strict: unknown keys anywhere in a profile document are rejected, every error names its path, and validation collects all errors.
 
