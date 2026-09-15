@@ -1,0 +1,232 @@
+{
+  "corpus": "paper-family-conformance/v2",
+  "cases": [
+    {
+      "id": "mold-v1-validates-cyclic-recursion",
+      "rule": "papermold/v1#papermold-v1-document-validity",
+      "subject": "papermold/v1",
+      "operation": "validateProfiles",
+      "input": { "args": [{ "protocol": "papermold/v1", "profiles": {
+        "self": { "vessels": { "shell": { "conformsTo": { "token": { "kind": "doll" }, "profile": "self" } } } },
+        "yin": { "vessels": { "hollow": { "conformsTo": { "token": { "kind": "seed" }, "profile": "yang" } } } },
+        "yang": { "vessels": { "hollow": { "conformsTo": { "token": { "kind": "seed" }, "profile": "yin" } } } }
+      } }] },
+      "expected": { "outcome": "valid" }
+    },
+    {
+      "id": "mold-v1-rejects-invalid-profile-clauses",
+      "rule": "papermold/v1#papermold-v1-document-validity",
+      "subject": "papermold/v1",
+      "operation": "validateProfiles",
+      "input": { "args": [{ "protocol": "papermold/v1", "profiles": {
+        "bad": {
+          "unknown": true,
+          "vessels": {
+            "empty": {},
+            "false-exists": { "exists": false },
+            "dangling": { "conformsTo": { "token": { "kind": "part" }, "profile": "missing" } }
+          },
+          "atLeast": { "n": 2, "of": [{ "vessel": "empty", "check": { "exists": true } }] }
+        }
+      } }] },
+      "expected": { "outcome": "invalid", "includesErrorPaths": [
+        "$.profiles.bad.unknown",
+        "$.profiles.bad.vessels.empty",
+        "$.profiles.bad.vessels.false-exists.exists",
+        "$.profiles.bad.vessels.dangling.conformsTo.profile",
+        "$.profiles.bad.atLeast.n"
+      ] }
+    },
+    {
+      "id": "mold-v1-rejects-container-port-sides",
+      "rule": "papermold/v1#papermold-v1-document-validity",
+      "subject": "papermold/v1",
+      "operation": "validateProfiles",
+      "input": { "args": [{ "protocol": "papermold/v1", "profiles": { "bad": { "vessels": {
+        "head": { "ports": { "bottom": { "vessel": "body", "side": [] } } },
+        "arm": { "ports": { "left": { "vessel": "body", "side": {} } } }
+      } } } }] },
+      "expected": { "outcome": "invalid", "includesErrorPaths": [
+        "$.profiles.bad.vessels.head.ports.bottom.side",
+        "$.profiles.bad.vessels.arm.ports.left.side"
+      ] }
+    },
+    {
+      "id": "mold-v1-all-body-clauses-conform",
+      "rule": "papermold/v1#papermold-v1-clause-semantics",
+      "subject": "papermold/v1",
+      "operation": "judge",
+      "input": { "args": [
+        { "root": "body", "vessels": {
+          "head": { "ports": { "bottom": { "vessel": "body", "side": "top" } } },
+          "body": {
+            "accepts": [{ "kind": "item" }, { "kind": "status" }],
+            "ports": { "top": { "vessel": "head", "side": "bottom" } }
+          },
+          "chest": { "contains": [
+            { "kind": "organ", "type": "heart" },
+            { "kind": "part", "type": "reactor", "id": "reactor", "body": {
+              "root": "core", "vessels": { "core": { "contains": [{ "kind": "fuel", "type": "uranium" }] } }
+            } }
+          ] },
+          "liver": {}, "lung": {}
+        } },
+        { "protocol": "papermold/v1", "profiles": {
+          "reactor-core": { "vessels": { "core": { "containsAtLeast": [{ "kind": "fuel" }] } } },
+          "living": {
+            "vessels": {
+              "head": { "exists": true, "ports": { "bottom": { "vessel": "body", "side": "top" } } },
+              "body": { "exists": true, "acceptsAtLeast": [{ "kind": "item", "type": "armor" }], "forbids": [{ "kind": "status", "type": "dead" }] },
+              "chest": {
+                "containsAtLeast": [{ "kind": "organ", "type": "heart" }],
+                "conformsTo": { "token": { "kind": "part", "type": "reactor" }, "profile": "reactor-core" }
+              }
+            },
+            "atLeast": { "n": 2, "of": [
+              { "vessel": "liver", "check": { "exists": true } },
+              { "vessel": "lung", "check": { "exists": true } },
+              { "vessel": "kidney", "check": { "exists": true } }
+            ] }
+          }
+        } },
+        "living"
+      ] },
+      "expected": { "outcome": "conforms" }
+    },
+    {
+      "id": "mold-v1-conforms-boolean",
+      "rule": "papermold/v1#papermold-v1-judgment",
+      "subject": "papermold/v1",
+      "operation": "conforms",
+      "input": { "args": [
+        { "root": "bag", "vessels": { "bag": { "contains": [{ "kind": "item", "type": "sword" }] } } },
+        { "protocol": "papermold/v1", "profiles": { "armed": {
+          "vessels": { "bag": { "containsAtLeast": [{ "kind": "item" }], "forbids": [{ "kind": "status", "type": "dead" }] } }
+        } } },
+        "armed"
+      ] },
+      "expected": { "outcome": "ok", "value": true }
+    },
+    {
+      "id": "mold-v1-reports-every-failed-clause",
+      "rule": "papermold/v1#papermold-v1-clause-semantics",
+      "subject": "papermold/v1",
+      "operation": "judge",
+      "input": { "args": [
+        { "root": "body", "vessels": {
+          "head": { "ports": { "right": { "vessel": "body", "side": "left" } } },
+          "body": {
+            "accepts": [{ "kind": "status", "type": "dead" }],
+            "contains": [{ "kind": "status", "type": "dead" }],
+            "ports": { "left": { "vessel": "head", "side": "right" } }
+          },
+          "chest": { "contains": [{ "kind": "part", "type": "reactor", "id": "reactor", "body": {
+            "root": "core", "vessels": { "core": {} }
+          } }] },
+          "liver": {}
+        } },
+        { "protocol": "papermold/v1", "profiles": {
+          "reactor-core": { "vessels": { "core": { "containsAtLeast": [{ "kind": "fuel" }] } } },
+          "living": {
+            "vessels": {
+              "head": { "ports": { "bottom": { "vessel": "body", "side": "top" } } },
+              "body": { "acceptsAtLeast": [{ "kind": "item", "type": "armor" }], "forbids": [{ "kind": "status", "type": "dead" }] },
+              "chest": {
+                "containsAtLeast": [{ "kind": "organ", "type": "heart" }],
+                "conformsTo": { "token": { "kind": "part", "type": "reactor" }, "profile": "reactor-core" }
+              }
+            },
+            "atLeast": { "n": 2, "of": [
+              { "vessel": "liver", "check": { "exists": true } },
+              { "vessel": "lung", "check": { "exists": true } },
+              { "vessel": "kidney", "check": { "exists": true } }
+            ] }
+          }
+        } },
+        "living"
+      ] },
+      "expected": { "outcome": "nonconforming", "includesErrorPaths": [
+        "$.profiles.living.vessels.head.ports.bottom",
+        "$.profiles.living.vessels.body.acceptsAtLeast.0",
+        "$.profiles.living.vessels.body.forbids.0",
+        "$.profiles.living.vessels.chest.containsAtLeast.0",
+        "$.profiles.living.vessels.chest.conformsTo",
+        "$.profiles.living.atLeast"
+      ] }
+    },
+    {
+      "id": "mold-v1-missing-vessel-dominates",
+      "rule": "papermold/v1#papermold-v1-clause-semantics",
+      "subject": "papermold/v1",
+      "operation": "judge",
+      "input": { "args": [
+        { "root": "body", "vessels": { "body": {} } },
+        { "protocol": "papermold/v1", "profiles": { "headed": { "vessels": {
+          "head": { "exists": true, "containsAtLeast": [{ "kind": "organ" }], "forbids": [{ "kind": "status" }] }
+        } } } },
+        "headed"
+      ] },
+      "expected": { "outcome": "nonconforming", "includesErrorPaths": ["$.profiles.headed.vessels.head"] }
+    },
+    {
+      "id": "mold-v1-exact-accept-token-does-not-satisfy-wildcard",
+      "rule": "papermold/v1#papermold-v1-clause-semantics",
+      "subject": "papermold/v1",
+      "operation": "judge",
+      "input": { "args": [
+        { "root": "bag", "vessels": { "bag": { "accepts": [{ "kind": "item", "type": "sword" }] } } },
+        { "protocol": "papermold/v1", "profiles": { "general": { "vessels": {
+          "bag": { "acceptsAtLeast": [{ "kind": "item" }] }
+        } } } },
+        "general"
+      ] },
+      "expected": { "outcome": "nonconforming", "includesErrorPaths": ["$.profiles.general.vessels.bag.acceptsAtLeast.0"] }
+    },
+    {
+      "id": "mold-v1-explicit-constructor-keys",
+      "rule": "papermold/v1#papermold-v1-judgment",
+      "subject": "papermold/v1",
+      "operation": "judge",
+      "input": { "args": [
+        { "root": "constructor", "vessels": { "constructor": {} } },
+        { "protocol": "papermold/v1", "profiles": { "constructor": { "vessels": { "constructor": { "exists": true } } } } },
+        "constructor"
+      ] },
+      "expected": { "outcome": "conforms" }
+    },
+    {
+      "id": "mold-v1-inherited-constructor-is-absent",
+      "rule": "papermold/v1#papermold-v1-judgment",
+      "subject": "papermold/v1",
+      "operation": "judge",
+      "input": { "args": [
+        { "root": "root", "vessels": { "root": {} } },
+        { "protocol": "papermold/v1", "profiles": { "check": { "vessels": { "constructor": { "exists": true } } } } },
+        "check"
+      ] },
+      "expected": { "outcome": "nonconforming", "includesErrorPaths": ["$.profiles.check.vessels.constructor"] }
+    },
+    {
+      "id": "mold-v1-missing-profile-is-caller-error",
+      "rule": "papermold/v1#papermold-v1-operation-domains",
+      "subject": "papermold/v1",
+      "operation": "judge",
+      "input": { "args": [
+        { "root": "root", "vessels": { "root": {} } },
+        { "protocol": "papermold/v1", "profiles": {} }, "ghost"
+      ] },
+      "expected": { "outcome": "error" }
+    },
+    {
+      "id": "mold-v1-invalid-body-is-caller-error",
+      "rule": "papermold/v1#papermold-v1-operation-domains",
+      "subject": "papermold/v1",
+      "operation": "conforms",
+      "input": { "args": [
+        { "root": "missing", "vessels": {} },
+        { "protocol": "papermold/v1", "profiles": { "anything": {} } }, "anything"
+      ] },
+      "expected": { "outcome": "error" }
+    }
+  ]
+}
