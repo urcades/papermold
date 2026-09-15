@@ -66,6 +66,12 @@ export type PapermoldDocument = {
   profiles: Record<string, Profile>;
 };
 
+// One top-level judgment owns one memo. Body object identity is its location
+// in the validated in-memory document; pairing it with the profile id keeps
+// distinct profile verdicts separate. The memo is intentionally never
+// retained by a public entry point, so later calls see mutations.
+export type JudgmentMemo = WeakMap<Body, Map<string, ProtocolError[]>>;
+
 const DEMAND_CLAUSES = ["exists", "ports", "acceptsAtLeast", "containsAtLeast", "conformsTo", "forbids"] as const;
 
 const SIDE_SET = new Set<string>(SIDES);
@@ -349,18 +355,28 @@ export function conforms(body: Body, document: PapermoldDocument, profileId: str
  * judgment (body demands re-wrap a v2 document's `profiles` half into a v1
  * document and land here). Module-level export only.
  */
-export function judgeProfile(body: Body, document: PapermoldDocument, profileId: string): ProtocolError[] {
+export function judgeProfile(
+  body: Body,
+  document: PapermoldDocument,
+  profileId: string,
+  memo: JudgmentMemo = new WeakMap()
+): ProtocolError[] {
+  const cached = memo.get(body)?.get(profileId);
+  if (cached !== undefined) return cached;
+
   const errors: ProtocolError[] = [];
   const profile = document.profiles[profileId] as Profile;
   const profilePath = `$.profiles.${profileId}`;
 
   for (const [vesselId, demand] of Object.entries(profile.vessels ?? {})) {
-    judgeDemand(body, document, vesselId, demand, `${profilePath}.vessels.${vesselId}`, errors);
+    judgeDemand(body, document, vesselId, demand, `${profilePath}.vessels.${vesselId}`, errors, memo);
   }
 
   const atLeast = profile.atLeast;
   if (atLeast) {
-    const passing = atLeast.of.filter((check) => demandPasses(body, document, check.vessel, check.check)).length;
+    const passing = atLeast.of.filter((check) =>
+      demandPasses(body, document, check.vessel, check.check, memo)
+    ).length;
     if (passing < atLeast.n) {
       // One error at the threshold, never one per failing check: when the
       // threshold is met, individual failures inside atLeast are not errors
@@ -372,12 +388,24 @@ export function judgeProfile(body: Body, document: PapermoldDocument, profileId:
     }
   }
 
+  let bodyMemo = memo.get(body);
+  if (bodyMemo === undefined) {
+    bodyMemo = new Map();
+    memo.set(body, bodyMemo);
+  }
+  bodyMemo.set(profileId, errors);
   return errors;
 }
 
-function demandPasses(body: Body, document: PapermoldDocument, vesselId: VesselId, demand: VesselDemand): boolean {
+function demandPasses(
+  body: Body,
+  document: PapermoldDocument,
+  vesselId: VesselId,
+  demand: VesselDemand,
+  memo: JudgmentMemo
+): boolean {
   const probe: ProtocolError[] = [];
-  judgeDemand(body, document, vesselId, demand, "$", probe);
+  judgeDemand(body, document, vesselId, demand, "$", probe, memo);
   return probe.length === 0;
 }
 
@@ -387,17 +415,17 @@ function judgeDemand(
   vesselId: VesselId,
   demand: VesselDemand,
   path: string,
-  errors: ProtocolError[]
+  errors: ProtocolError[],
+  memo: JudgmentMemo
 ): void {
-  const vessel = body.vessels[vesselId];
-
   // Matching is name-anchored (pre-RFC decision 1): the profile's vessel id
   // is looked up literally. A vessel absent from the body fails all its
   // demands at once, with a single error.
-  if (!vessel) {
+  if (!Object.prototype.hasOwnProperty.call(body.vessels, vesselId)) {
     errors.push({ path, message: `Body has no vessel "${vesselId}".` });
     return;
   }
+  const vessel = body.vessels[vesselId];
 
   // exists: satisfied by presence — the lookup above is the check.
 
@@ -454,7 +482,9 @@ function judgeDemand(
     // bottoms out regardless of cycles among the profiles themselves.
     const found = (vessel.contains ?? []).some(
       (element) =>
-        matches(token, element) && element.body !== undefined && judgeProfile(element.body, document, profile).length === 0
+        matches(token, element) &&
+        element.body !== undefined &&
+        judgeProfile(element.body, document, profile, memo).length === 0
     );
     if (!found) {
       errors.push({

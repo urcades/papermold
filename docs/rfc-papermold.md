@@ -20,7 +20,7 @@ Envelope typing is a name tag. A profile is an inspection. papermold is the diff
 
 > **gamecraft counts → paperfold reifies → papermold judges.**
 
-This is design, not limitation. It keeps judgments language-neutral (a Rust conformance checker needs no game logic), and it forces every game-significant state to become structurally visible — which means diffable saves, replayable histories, and cheating that shows up as a structural anomaly rather than hiding in an opaque blob. The gamecraft design note anticipated exactly this composition: "a scheduled patch generator whose thresholds reify as structural change, so profile conformance can observe them."
+This keeps judgments language-neutral (a Rust conformance checker needs no game logic) and makes emitted structural markers diffable and replayable. The marker remains a consumer assertion: papermold cannot inspect `hp`, prove that a threshold crossed, or distinguish an honest marker from a dishonest one. The consumer must keep opaque state and its markers consistent, or derive markers reliably at a boundary. The gamecraft design note anticipated exactly this composition: "a scheduled patch generator whose thresholds reify as structural change, so profile conformance can observe them."
 
 papermold also does not monitor (decision 3), does not gate paperdoll validity (decision 5), and does not do cross-vocabulary interpretation ("a cockpit counts as a head") — that is subsumption, which belongs to the vocabulary manifest if and when it exists.
 

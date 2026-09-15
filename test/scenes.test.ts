@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateScene } from "paperchain";
+import { PAPERCHAIN_PROTOCOL, validateScene } from "paperchain";
 import type { Scene } from "paperchain";
 import type { Body } from "paperdoll";
 import {
@@ -325,6 +325,107 @@ describe("judgeScene: bodies", () => {
       {
         path: "$.sceneProfiles.p.bodies.pool.conformsTo",
         message: 'Scene body "pool" does not conform to profile "living-combatant".'
+      }
+    ]);
+  });
+
+  it("does not treat inherited constructor properties as a body or kind", () => {
+    const document = docWith({
+      p: {
+        bodies: { constructor: { exists: true as const } },
+        kinds: { constructor: { declared: true as const } }
+      }
+    });
+    expect(judgeScene(VERSUS_SCENE, document, "p")).toEqual([
+      { path: "$.sceneProfiles.p.bodies.constructor", message: 'Scene has no body "constructor".' },
+      { path: "$.sceneProfiles.p.kinds.constructor", message: 'Scene declares no kind "constructor".' }
+    ]);
+  });
+
+  it("still accepts explicitly declared constructor body and kind names", () => {
+    const scene: Scene = {
+      protocol: PAPERCHAIN_PROTOCOL,
+      bodies: { constructor: { root: "root", vessels: { root: {} } } },
+      kinds: { constructor: {} },
+      relations: []
+    };
+    const document = docWith({
+      p: {
+        bodies: { constructor: { exists: true as const } },
+        kinds: { constructor: { declared: true as const } }
+      }
+    });
+
+    expect(judgeScene(scene, document, "p")).toEqual([]);
+  });
+});
+
+describe("judgeScene: body judgment memoization", () => {
+  it("shares one body-profile result across body, relation, and universal clauses", () => {
+    let rootReads = 0;
+    const vessels: Body["vessels"] = { root: {} };
+    const body: Body = {
+      root: "root",
+      vessels: new Proxy(vessels, {
+        get(target, key, receiver) {
+          if (key === "root") rootReads += 1;
+          return Reflect.get(target, key, receiver);
+        }
+      })
+    };
+    const scene: Scene = {
+      protocol: PAPERCHAIN_PROTOCOL,
+      bodies: { actor: body },
+      kinds: { links: { symmetric: true } },
+      relations: [{ kind: "links", from: "actor/root", to: "actor/root" }]
+    };
+    const document: PapermoldSceneDocument = {
+      protocol: PAPERMOLD_SCENE_PROTOCOL,
+      profiles: { rooted: { vessels: { root: { exists: true } } } },
+      sceneProfiles: {
+        repeated: {
+          bodies: { actor: { conformsTo: "rooted" } },
+          relations: [
+            { at: "actor", kind: "links", atLeast: 1, otherEndpoint: { conformsTo: "rooted" } }
+          ],
+          forAllBodies: [{ check: { conformsTo: "rooted" } }]
+        }
+      }
+    };
+
+    validateScene(scene);
+    const validationReads = rootReads;
+    rootReads = 0;
+
+    expect(judgeScene(scene, document, "repeated")).toEqual([]);
+    expect(rootReads - validationReads).toBe(1);
+  });
+
+  it("keys cached scene judgments by profile id", () => {
+    const scene: Scene = {
+      protocol: PAPERCHAIN_PROTOCOL,
+      bodies: { actor: { root: "root", vessels: { root: {} } } },
+      kinds: {},
+      relations: []
+    };
+    const document: PapermoldSceneDocument = {
+      protocol: PAPERMOLD_SCENE_PROTOCOL,
+      profiles: {
+        rooted: { vessels: { root: { exists: true } } },
+        marked: { vessels: { root: { containsAtLeast: [{ kind: "mark" }] } } }
+      },
+      sceneProfiles: {
+        distinct: {
+          bodies: { actor: { conformsTo: "rooted" } },
+          forAllBodies: [{ check: { conformsTo: "marked" } }]
+        }
+      }
+    };
+
+    expect(judgeScene(scene, document, "distinct")).toEqual([
+      {
+        path: "$.sceneProfiles.distinct.forAllBodies.0.check.conformsTo",
+        message: 'Scene body "actor" does not conform to profile "marked".'
       }
     ]);
   });

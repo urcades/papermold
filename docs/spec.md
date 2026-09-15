@@ -163,7 +163,10 @@ collects all failures; it never stops at the first.
   instead the game mutates `hp` freely in `data`, and when a threshold
   crosses it applies a paperfold patch that *structurally reifies* the state
   (insert a dead-status element, delete the head vessel, seal a slot).
-  Conformance then flips mechanically in any validator. The relay:
+  Conformance then flips mechanically in any validator. The marker is a
+  consumer assertion, not proof of the opaque simulation state: papermold
+  cannot verify the threshold or the honesty of the producer. Consumers must
+  update the two together or derive markers reliably at a boundary. The relay:
   **gamecraft counts → paperfold reifies → papermold judges.**
 - **Checked, not monitored** (pre-RFC decision 3). papermold defines only
   the pure judgment: two documents in, a verdict out. No subscriptions, no
@@ -231,13 +234,26 @@ collects all failures; it never stops at the first.
 
 ## Complexity, recorded
 
-Name-anchoring (pre-RFC decision 1) keeps the judgment a linear walk: every
-clause names its target vessel, so there is no pattern search, no subgraph
-isomorphism, no token-budget assignment. `atLeast` is a count of named
-checks; `conformsTo` recurses through strictly nested bodies. The judgment
-is linear in (size of profile × size of body), and incremental re-judging —
-only profiles that name a patched vessel — is an implementation strategy the
-spec neither requires nor forbids.
+Name-anchoring (pre-RFC decision 1) avoids pattern search, subgraph
+isomorphism, and token-budget assignment. `atLeast` scans named checks;
+`conformsTo` recurses only through strictly nested bodies.
+
+For a precise cost model, let `J` be the distinct `(body location, profile
+id)` pairs reached by one top-level judgment. Each pair is evaluated once and
+memoized for that invocation. Its local cost is the profile clauses visited
+plus the vessel contents those clauses scan. Total judgment work is the sum
+of those local costs over `J`; a coarse bound for profile-document size `P`
+and serialized finite body-tree size `N` is `O(P × N)`. Repeating the same
+recursive check does not multiply a child subproblem. The memo requires
+`O(|J|)` entries, plus recursion depth and returned diagnostics.
+
+The memo belongs to one `judge` or `judgeScene` call. It is never reused for
+another document or after caller mutation. The protocol imposes no arbitrary
+depth cap; hosts accepting untrusted input should apply resource limits at
+their boundary. Incremental re-judging across calls remains an application
+strategy the spec neither requires nor forbids. A public `judge` call also
+pays the one-time cost of validating the body and profile document before
+this walk.
 
 ---
 
@@ -512,9 +528,15 @@ Everything v1 refuses, plus:
 
 ## Complexity, recorded
 
-The scene judgment stays a linear walk: `O(B × D_b + R × D_r + K)` for `B`
-scene bodies against `D_b` body-quantified checks, `R` scene relations
-against `D_r` relation demands and bans, and `K` named kind demands — plus
-v1's `O(P × |body|)` for each `conformsTo` a clause invokes. No pattern
-search, no join evaluation, no budget assignment: the quantifier stance is
-what keeps the exponent off.
+Let `D_n` be named body demands, `D_a` universal body checks, `D_r` relation
+demands, `D_f` relation bans, `B` scene bodies, `R` relations, and `K` named
+kind demands. The scene-side walk is
+`O(D_n + B × D_a + R × (D_r + D_f) + K)`, plus the v1 local costs for the
+distinct `(body location, profile id)` pairs reached anywhere in the call.
+Those body-profile results share one invocation-local memo across named body
+demands, universal checks, and relation endpoint filters. Repeated clauses do
+not repeatedly judge the same pair. No pattern search, join evaluation, or
+budget assignment is introduced. This bound counts scene clauses and relation
+visits; anchor and endpoint resolution additionally traverse their address
+paths, and a public `judgeScene` call first validates the scene and profile
+document once.
