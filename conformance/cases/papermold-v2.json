@@ -1,0 +1,265 @@
+{
+  "corpus": "paper-family-conformance/v2",
+  "cases": [
+    {
+      "id": "mold-v2-validates-all-scene-clauses",
+      "rule": "papermold/v2#papermold-v2-scene-profile-document",
+      "subject": "papermold/v2",
+      "operation": "validateSceneProfiles",
+      "input": { "args": [{ "protocol": "papermold/v2",
+        "profiles": { "living": { "vessels": { "core": { "containsAtLeast": [{ "kind": "organ" }] } } } },
+        "sceneProfiles": { "arena": {
+          "bodies": { "red": { "exists": true, "conformsTo": "living" } },
+          "kinds": { "wields": { "declared": true, "declaration": { "fromMax": 1 } } },
+          "relations": [{
+            "at": "red", "kind": "wields", "role": "from", "atLeast": 1, "atMost": 1,
+            "otherEndpoint": { "prefix": "red/core/sword", "conformsTo": "living" }
+          }],
+          "forAllBodies": [{ "excluding": ["pool"], "check": { "exists": true, "conformsTo": "living" } }],
+          "forbidsRelations": [{ "kind": "grapples", "at": "pool" }]
+        } }
+      }] },
+      "expected": { "outcome": "valid" }
+    },
+    {
+      "id": "mold-v2-rejects-invalid-and-cross-namespace-references",
+      "rule": "papermold/v2#papermold-v2-document-validity",
+      "subject": "papermold/v2",
+      "operation": "validateSceneProfiles",
+      "input": { "args": [{ "protocol": "papermold/v2", "profiles": {}, "sceneProfiles": {
+        "scene-only": {},
+        "bad": {
+          "unknown": true,
+          "bodies": { "hero": { "conformsTo": "scene-only" } },
+          "kinds": { "link": { "declaration": { "symmetric": true, "toMax": 1 } } },
+          "relations": [
+            { "at": "hero/", "kind": "link" },
+            { "at": "hero", "kind": "link", "atLeast": 2, "atMost": 1, "otherEndpoint": {} }
+          ],
+          "forAllBodies": [],
+          "forbidsRelations": []
+        }
+      } }] },
+      "expected": { "outcome": "invalid", "includesErrorPaths": [
+        "$.sceneProfiles.bad.unknown",
+        "$.sceneProfiles.bad.bodies.hero.conformsTo",
+        "$.sceneProfiles.bad.kinds.link.declaration.toMax",
+        "$.sceneProfiles.bad.relations.0.at",
+        "$.sceneProfiles.bad.relations.0",
+        "$.sceneProfiles.bad.relations.1.atLeast",
+        "$.sceneProfiles.bad.relations.1.otherEndpoint",
+        "$.sceneProfiles.bad.forAllBodies",
+        "$.sceneProfiles.bad.forbidsRelations"
+      ] }
+    },
+    {
+      "id": "mold-v2-rejects-container-port-sides",
+      "rule": "papermold/v2#papermold-v2-document-validity",
+      "subject": "papermold/v2",
+      "operation": "validateSceneProfiles",
+      "input": { "args": [{ "protocol": "papermold/v2", "profiles": { "bad": { "vessels": {
+        "head": { "ports": { "bottom": { "vessel": "body", "side": [] } } },
+        "arm": { "ports": { "left": { "vessel": "body", "side": {} } } }
+      } } }, "sceneProfiles": {} }] },
+      "expected": { "outcome": "invalid", "includesErrorPaths": [
+        "$.profiles.bad.vessels.head.ports.bottom.side",
+        "$.profiles.bad.vessels.arm.ports.left.side"
+      ] }
+    },
+    {
+      "id": "mold-v2-all-scene-clauses-conform",
+      "rule": "papermold/v2#papermold-v2-clause-semantics",
+      "subject": "papermold/v2",
+      "operation": "judgeScene",
+      "input": { "args": [
+        { "protocol": "paperchain/v1", "bodies": {
+          "red": { "root": "core", "vessels": { "core": { "contains": [
+            { "kind": "organ", "type": "heart" }, { "kind": "item", "type": "sword", "id": "sword" }
+          ] } } },
+          "blue": { "root": "core", "vessels": { "core": { "contains": [{ "kind": "organ", "type": "heart" }] } } },
+          "pool": { "root": "core", "vessels": { "core": { "contains": [{ "kind": "item", "type": "potion" }] } } }
+        }, "kinds": {
+          "wields": { "fromMax": 1, "toMax": 1 },
+          "grapples": { "symmetric": true, "fromMax": 2 }
+        }, "relations": [
+          { "kind": "wields", "from": "red/core", "to": "red/core/sword" },
+          { "kind": "grapples", "from": "blue/core", "to": "red/core" }
+        ] },
+        { "protocol": "papermold/v2",
+          "profiles": { "living": { "vessels": { "core": { "containsAtLeast": [{ "kind": "organ" }] } } } },
+          "sceneProfiles": { "arena": {
+            "bodies": { "red": { "exists": true, "conformsTo": "living" } },
+            "kinds": {
+              "wields": { "declared": true, "declaration": { "symmetric": false, "fromMax": 1 } },
+              "grapples": { "declaration": { "symmetric": true } }
+            },
+            "relations": [
+              { "at": "red", "kind": "wields", "role": "from", "atLeast": 1, "atMost": 1, "otherEndpoint": { "prefix": "red/core/sword", "conformsTo": "living" } },
+              { "at": "red", "kind": "grapples", "role": "from", "atLeast": 1, "atMost": 1, "otherEndpoint": { "prefix": "blue", "conformsTo": "living" } }
+            ],
+            "forAllBodies": [{ "excluding": ["pool"], "check": { "conformsTo": "living" } }],
+            "forbidsRelations": [{ "kind": "wields", "at": "blue" }]
+          } }
+        },
+        "arena"
+      ] },
+      "expected": { "outcome": "conforms" }
+    },
+    {
+      "id": "mold-v2-conforms-scene-boolean",
+      "rule": "papermold/v2#papermold-v2-judgment",
+      "subject": "papermold/v2",
+      "operation": "conformsScene",
+      "input": { "args": [
+        { "protocol": "paperchain/v1", "bodies": {}, "kinds": {}, "relations": [] },
+        { "protocol": "papermold/v2", "profiles": {}, "sceneProfiles": { "anything": {} } },
+        "anything"
+      ] },
+      "expected": { "outcome": "ok", "value": true }
+    },
+    {
+      "id": "mold-v2-reports-every-scene-clause",
+      "rule": "papermold/v2#papermold-v2-clause-semantics",
+      "subject": "papermold/v2",
+      "operation": "judgeScene",
+      "input": { "args": [
+        { "protocol": "paperchain/v1", "bodies": {
+          "red": { "root": "core", "vessels": { "core": { "contains": [{ "kind": "item", "id": "sword" }] } } },
+          "pool": { "root": "core", "vessels": { "core": {} } }
+        }, "kinds": { "wields": { "fromMax": 1 } },
+          "relations": [{ "kind": "wields", "from": "red/core", "to": "red/core/sword" }] },
+        { "protocol": "papermold/v2",
+          "profiles": { "living": { "vessels": { "core": { "containsAtLeast": [{ "kind": "organ" }] } } } },
+          "sceneProfiles": { "strict": {
+            "bodies": { "ghost": { "exists": true, "conformsTo": "living" }, "red": { "conformsTo": "living" } },
+            "kinds": { "missing": { "declared": true }, "wields": { "declaration": { "fromMax": 2 } } },
+            "relations": [
+              { "at": "ghost", "kind": "wields", "atLeast": 1 },
+              { "at": "red", "kind": "wields", "atMost": 0 },
+              { "at": "red", "kind": "wields", "atLeast": 1, "otherEndpoint": { "prefix": "pool" } }
+            ],
+            "forAllBodies": [{ "check": { "conformsTo": "living" } }],
+            "forbidsRelations": [{ "kind": "wields" }]
+          } }
+        },
+        "strict"
+      ] },
+      "expected": { "outcome": "nonconforming", "includesErrorPaths": [
+        "$.sceneProfiles.strict.bodies.ghost",
+        "$.sceneProfiles.strict.bodies.red.conformsTo",
+        "$.sceneProfiles.strict.kinds.missing",
+        "$.sceneProfiles.strict.kinds.wields.declaration.fromMax",
+        "$.sceneProfiles.strict.relations.0",
+        "$.sceneProfiles.strict.relations.1.atMost",
+        "$.sceneProfiles.strict.relations.2.atLeast",
+        "$.sceneProfiles.strict.forAllBodies.0.check.conformsTo",
+        "$.sceneProfiles.strict.forbidsRelations.0"
+      ] }
+    },
+    {
+      "id": "mold-v2-prefix-selector-has-segment-boundary",
+      "rule": "papermold/v2#papermold-v2-anchors",
+      "subject": "papermold/v2",
+      "operation": "judgeScene",
+      "input": { "args": [
+        { "protocol": "paperchain/v1", "bodies": {
+          "red": { "root": "core", "vessels": { "core": {} } },
+          "red-two": { "root": "core", "vessels": { "core": { "contains": [{ "kind": "item", "id": "sword" }] } } }
+        }, "kinds": { "wields": {} },
+          "relations": [{ "kind": "wields", "from": "red-two/core", "to": "red-two/core/sword" }] },
+        { "protocol": "papermold/v2", "profiles": {}, "sceneProfiles": { "clear": {
+          "relations": [{ "at": "red", "kind": "wields", "atMost": 0 }]
+        } } },
+        "clear"
+      ] },
+      "expected": { "outcome": "conforms" }
+    },
+    {
+      "id": "mold-v2-symmetric-self-relation-counts-once",
+      "rule": "papermold/v2#papermold-v2-clause-semantics",
+      "subject": "papermold/v2",
+      "operation": "judgeScene",
+      "input": { "args": [
+        { "protocol": "paperchain/v1", "bodies": { "red": { "root": "core", "vessels": { "core": {} } } },
+          "kinds": { "hums": { "symmetric": true } },
+          "relations": [{ "kind": "hums", "from": "red/core", "to": "red/core" }] },
+        { "protocol": "papermold/v2", "profiles": {}, "sceneProfiles": { "one": {
+          "relations": [{ "at": "red", "kind": "hums", "atLeast": 1, "atMost": 1 }]
+        } } },
+        "one"
+      ] },
+      "expected": { "outcome": "conforms" }
+    },
+    {
+      "id": "mold-v2-judge-body-reuses-v1-semantics",
+      "rule": "papermold/v2#papermold-v2-scene-profile-document",
+      "subject": "papermold/v2",
+      "operation": "judgeBody",
+      "input": { "args": [
+        { "root": "core", "vessels": { "core": { "contains": [{ "kind": "organ", "type": "heart" }] } } },
+        { "protocol": "papermold/v2", "profiles": { "living": { "vessels": {
+          "core": { "containsAtLeast": [{ "kind": "organ", "type": "heart" }] }
+        } } }, "sceneProfiles": {} },
+        "living"
+      ] },
+      "expected": { "outcome": "conforms" }
+    },
+    {
+      "id": "mold-v2-conforms-body-boolean-false",
+      "rule": "papermold/v2#papermold-v2-scene-profile-document",
+      "subject": "papermold/v2",
+      "operation": "conformsBody",
+      "input": { "args": [
+        { "root": "core", "vessels": { "core": {} } },
+        { "protocol": "papermold/v2", "profiles": { "living": { "vessels": {
+          "core": { "containsAtLeast": [{ "kind": "organ" }] }
+        } } }, "sceneProfiles": {} },
+        "living"
+      ] },
+      "expected": { "outcome": "ok", "value": false }
+    },
+    {
+      "id": "mold-v2-explicit-constructor-namespaces",
+      "rule": "papermold/v2#papermold-v2-clause-semantics",
+      "subject": "papermold/v2",
+      "operation": "judgeScene",
+      "input": { "args": [
+        { "protocol": "paperchain/v1", "bodies": {
+          "constructor": { "root": "constructor", "vessels": { "constructor": {} } }
+        }, "kinds": { "constructor": {} }, "relations": [] },
+        { "protocol": "papermold/v2", "profiles": {
+          "constructor": { "vessels": { "constructor": { "exists": true } } }
+        }, "sceneProfiles": { "constructor": {
+          "bodies": { "constructor": { "exists": true, "conformsTo": "constructor" } },
+          "kinds": { "constructor": { "declared": true } }
+        } } },
+        "constructor"
+      ] },
+      "expected": { "outcome": "conforms" }
+    },
+    {
+      "id": "mold-v2-missing-scene-profile-is-error",
+      "rule": "papermold/v2#papermold-v2-judgment",
+      "subject": "papermold/v2",
+      "operation": "judgeScene",
+      "input": { "args": [
+        { "protocol": "paperchain/v1", "bodies": {}, "kinds": {}, "relations": [] },
+        { "protocol": "papermold/v2", "profiles": {}, "sceneProfiles": {} },
+        "ghost"
+      ] },
+      "expected": { "outcome": "error" }
+    },
+    {
+      "id": "mold-v2-missing-body-profile-is-error",
+      "rule": "papermold/v2#papermold-v2-judgment",
+      "subject": "papermold/v2",
+      "operation": "judgeBody",
+      "input": { "args": [
+        { "root": "core", "vessels": { "core": {} } },
+        { "protocol": "papermold/v2", "profiles": {}, "sceneProfiles": {} },
+        "ghost"
+      ] },
+      "expected": { "outcome": "error" }
+    }
+  ]
+}

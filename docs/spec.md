@@ -14,6 +14,7 @@ hand and nothing else. This specification is language-independent: the
 document format plus the clause semantics below are the protocol; the
 TypeScript library is one implementation.
 
+<a id="papermold-v1-operation-domains"></a>
 ## Normative status and operation domains
 <a id="normative-status-and-operation-domains"></a>
 
@@ -43,6 +44,20 @@ stack, execution, and cancellation limits. Host resource failure is not a
 conformance verdict. Papermold imposes no protocol-level nesting or document
 size cap.
 
+<a id="portable-json"></a>
+## Optional portable JSON profile
+
+`papermold/v1` and `papermold/v2` MAY be exchanged under the additive
+[`paper-json-portable/v1` profile](https://github.com/urcades/paperdoll/blob/main/docs/spec.md#portable-json).
+The profile uses finite IEEE 754 binary64 numbers and limits every integral
+result to `-9007199254740991` through `9007199254740991`, inclusive. It applies
+to the complete profile document, including `atLeast` thresholds, kind
+multiplicity budgets, and any embedded protocol values. Profile conformance is
+separate from profile-document validity; it does not tighten either dialect or
+its schema. Exact larger integers belong in canonical decimal strings under a
+consumer-defined field contract.
+
+<a id="papermold-v1-profile-document"></a>
 ## The profile document
 
 ```jsonc
@@ -84,6 +99,7 @@ empty demand object is a validation error):
 }
 ```
 
+<a id="papermold-v1-document-validity"></a>
 ### Document validity
 
 `validateProfiles` rejects, with a path-annotated error each, and collects
@@ -107,6 +123,7 @@ all errors rather than stopping at the first:
 Cyclic `conformsTo` references — self-references and mutual references alike
 — are **legal** (micro-decision 2 below).
 
+<a id="papermold-v1-judgment"></a>
 ## The judgment
 
 ```
@@ -125,6 +142,7 @@ looked up literally in `body.vessels`. There are no pattern variables and no
 role bindings; a `cockpit` where the profile demands a `head` does not
 conform, however identical the geometry.
 
+<a id="papermold-v1-clause-semantics"></a>
 ### Clause semantics
 
 Per named vessel `<v>` with demand `<d>`, judged at path
@@ -305,6 +323,7 @@ combatant, a disarmed loser, as pure conformance judgments over a paperchain
 scene. The v1 discipline is widened, not changed: judgment stays a linear
 walk, data stays unread, and the vocabulary stops before the same cliffs.
 
+<a id="papermold-v2-scene-profile-document"></a>
 ## The scene profile document
 
 ```jsonc
@@ -353,6 +372,7 @@ A **RelationDemand** is:
 }
 ```
 
+<a id="papermold-v2-anchors"></a>
 ### Anchors
 
 An **anchor** is one or more `/`-joined kernel ids: one segment names a whole
@@ -371,6 +391,7 @@ addresses only: a relation whose endpoint sits *inside* the anchored subtree
 still counts — a sword sheathed inside the hand is still wielded by the hand.
 The demand asks about a region of structure, not a coordinate.
 
+<a id="papermold-v2-document-validity"></a>
 ### Document validity
 
 `validateSceneProfiles` rejects, path-annotated and all-errors-collected as
@@ -399,6 +420,7 @@ everywhere in the family:
 - a `conformsTo` — anywhere on the scene side — naming no profile in this
   document's `profiles`.
 
+<a id="papermold-v2-judgment"></a>
 ## The judgment
 
 ```
@@ -415,6 +437,7 @@ caller error and **throws** the formatted validation errors, as does a
 with kernel validation and throws on an unknown `profileId`. Everything the
 judgment returns is about conformance, never well-formedness.
 
+<a id="papermold-v2-clause-semantics"></a>
 ### Clause semantics
 
 Per named body `<b>`, judged at `$.sceneProfiles.<p>.bodies.<b>`:

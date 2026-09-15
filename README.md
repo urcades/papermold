@@ -142,10 +142,12 @@ Profiles-of-scenes shipped as papermold/v2 (above) once versus mode in paperdoll
 
 The protocol is the document format plus the clause semantics in the current normative [`papermold/v1 and papermold/v2 specification`](docs/spec.md). [`schema/papermold-v1.schema.json`](schema/papermold-v1.schema.json) and [`schema/papermold-v2.schema.json`](schema/papermold-v2.schema.json) are structural JSON Schema (2020-12) companions, not complete specifications. Package versions and dependency floors are listed in the [`paper* family compatibility matrix`](https://github.com/urcades/paperdoll/blob/main/docs/family-compatibility.md). Any language can validate profile documents and judge conformance against conforming paperdoll and paperchain implementations.
 
+The optional [`paper-json-portable/v1` profile](docs/spec.md#portable-json) limits integral binary64 values, including thresholds and kind budgets, to `±9007199254740991`. `validatePortableJson` checks that independent second verdict; larger exact integers should use canonical decimal strings under an application field contract.
+
 ## API
 
-- constants: `PAPERMOLD_PROTOCOL`, `PAPERMOLD_SCENE_PROTOCOL`
-- validation: `parseProfiles`, `assertProfiles`, `validateProfiles`, `parseSceneProfiles`, `assertSceneProfiles`, `validateSceneProfiles`, `formatProtocolErrors` (re-exported from paperdoll)
+- constants: `PAPERMOLD_PROTOCOL`, `PAPERMOLD_SCENE_PROTOCOL`, `MAX_PORTABLE_INTEGER` (re-exported from paperdoll)
+- validation: `parseProfiles`, `assertProfiles`, `validateProfiles`, `parseSceneProfiles`, `assertSceneProfiles`, `validateSceneProfiles`, `validatePortableJson`, `formatProtocolErrors` (portable helpers re-exported from paperdoll)
 - judgment: `judge`, `conforms` (v1); `judgeScene`, `conformsScene`, `judgeBody`, `conformsBody` (v2)
 - types: `PapermoldDocument`, `Profile`, `VesselDemand`, `ConformsToDemand`, `AtLeast`, `AtLeastCheck`; v2's `PapermoldSceneDocument`, `SceneProfile`, `BodyDemand`, `KindDemand`, `RelationDemand`, `EndpointFilter`, `ForAllBodiesCheck`, `RelationBan`; plus re-exported kernel types (`AcceptToken`, `Body`, `ContainedElement`, `PortAddress`, `ProtocolError`, `Result`, `Side`, `Vessel`, `VesselId`) and paperchain types (`BodyName`, `KindDeclaration`, `KindId`, `Relation`, `Scene`, `SceneAddress`)
 
