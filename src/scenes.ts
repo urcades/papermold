@@ -6,19 +6,22 @@ import {
   judgeProfile,
   PAPERMOLD_PROTOCOL,
   validateProfilesRecord,
+  type JudgmentMemo,
   type PapermoldDocument,
   type Profile
 } from "./papermold.js";
 
 // papermold/v2 — scene profiles: conformance judgment over paperchain scenes.
 //
-// The v1 discipline widened, not changed. Judgment stays a linear walk: every
-// clause quantifies over at most one implicit variable (a relation, a body)
-// and no variable is shared between clauses — a shared variable would turn
-// judgment into conjunctive-query evaluation over the relation graph, the
-// same NP-hard search that pre-RFC decision 1's name-anchoring refuses. Data
-// stays unread. Scene profiles reference body profiles in the same document
-// only, and never reference other scene profiles: scenes do not nest, so the
+// The v1 discipline widened, not changed. The scene-side judgment is a linear
+// walk: every clause quantifies over at most one implicit variable (a
+// relation, a body), and no variable is shared between clauses — a shared
+// variable would turn judgment into conjunctive-query evaluation over the
+// relation graph, the same NP-hard search that pre-RFC decision 1's
+// name-anchoring refuses. Data
+// stays unread. Repeated body-profile subjudgments share an invocation-local
+// memo. Scene profiles reference body profiles in the same document only,
+// and never reference other scene profiles: scenes do not nest, so the
 // strictly-smaller-descent argument that makes body-profile cycles terminate
 // (micro-decision 2) does not transfer.
 
@@ -499,17 +502,21 @@ function judgeSceneProfile(scene: Scene, document: PapermoldSceneDocument, scene
   const profile = document.sceneProfiles[sceneProfileId] as SceneProfile;
   const profilePath = `$.sceneProfiles.${sceneProfileId}`;
   const bodyDocument = asBodyDocument(document);
+  const memo: JudgmentMemo = new WeakMap();
 
   for (const [bodyName, demand] of Object.entries(profile.bodies ?? {})) {
     const path = `${profilePath}.bodies.${bodyName}`;
-    const body = scene.bodies[bodyName];
     // Absence dominates, as in v1: a missing body fails all its demands at
     // once with a single error.
-    if (!body) {
+    if (!Object.prototype.hasOwnProperty.call(scene.bodies, bodyName)) {
       errors.push({ path, message: `Scene has no body "${bodyName}".` });
       continue;
     }
-    if (demand.conformsTo !== undefined && judgeProfile(body, bodyDocument, demand.conformsTo).length > 0) {
+    const body = scene.bodies[bodyName];
+    if (
+      demand.conformsTo !== undefined &&
+      judgeProfile(body, bodyDocument, demand.conformsTo, memo).length > 0
+    ) {
       errors.push({
         path: `${path}.conformsTo`,
         message: `Scene body "${bodyName}" does not conform to profile "${demand.conformsTo}".`
@@ -519,11 +526,11 @@ function judgeSceneProfile(scene: Scene, document: PapermoldSceneDocument, scene
 
   for (const [kindId, demand] of Object.entries(profile.kinds ?? {})) {
     const path = `${profilePath}.kinds.${kindId}`;
-    const declaration = scene.kinds[kindId];
-    if (declaration === undefined) {
+    if (!Object.prototype.hasOwnProperty.call(scene.kinds, kindId)) {
       errors.push({ path, message: `Scene declares no kind "${kindId}".` });
       continue;
     }
+    const declaration = scene.kinds[kindId];
     if (demand.declaration !== undefined) {
       judgeKindDeclaration(kindId, declaration, demand.declaration, `${path}.declaration`, errors);
     }
@@ -535,7 +542,7 @@ function judgeSceneProfile(scene: Scene, document: PapermoldSceneDocument, scene
       errors.push({ path, message: `Anchor "${demand.at}" does not resolve in the scene.` });
       return;
     }
-    const count = countRelations(scene, bodyDocument, demand);
+    const count = countRelations(scene, bodyDocument, demand, memo);
     if (demand.atLeast !== undefined && count < demand.atLeast) {
       errors.push({
         path: `${path}.atLeast`,
@@ -558,7 +565,7 @@ function judgeSceneProfile(scene: Scene, document: PapermoldSceneDocument, scene
       if (excluded.has(bodyName)) continue;
       if (
         check.check.conformsTo !== undefined &&
-        judgeProfile(scene.bodies[bodyName], bodyDocument, check.check.conformsTo).length > 0
+        judgeProfile(scene.bodies[bodyName], bodyDocument, check.check.conformsTo, memo).length > 0
       ) {
         errors.push({
           path: `${path}.check.conformsTo`,
@@ -652,8 +659,14 @@ function anchorResolves(scene: Scene, anchor: string): boolean {
   }
 }
 
-function countRelations(scene: Scene, bodyDocument: PapermoldDocument, demand: RelationDemand): number {
-  const symmetric = scene.kinds[demand.kind]?.symmetric === true;
+function countRelations(
+  scene: Scene,
+  bodyDocument: PapermoldDocument,
+  demand: RelationDemand,
+  memo: JudgmentMemo
+): number {
+  const symmetric =
+    Object.prototype.hasOwnProperty.call(scene.kinds, demand.kind) && scene.kinds[demand.kind].symmetric === true;
   // role restricts the anchor's position for directional kinds; symmetric
   // kinds have no positions, so role degrades to either-position.
   const positions: ("from" | "to")[] = demand.role !== undefined && !symmetric ? [demand.role] : ["from", "to"];
@@ -667,7 +680,7 @@ function countRelations(scene: Scene, bodyDocument: PapermoldDocument, demand: R
     const counted = positions.some((position) => {
       if (!endpointUnderAnchor(relation[position], demand.at)) return false;
       const other = relation[position === "from" ? "to" : "from"];
-      return otherEndpointPasses(scene, bodyDocument, other, demand.otherEndpoint);
+      return otherEndpointPasses(scene, bodyDocument, other, demand.otherEndpoint, memo);
     });
     if (counted) count += 1;
   }
@@ -678,7 +691,8 @@ function otherEndpointPasses(
   scene: Scene,
   bodyDocument: PapermoldDocument,
   endpoint: string,
-  filter: EndpointFilter | undefined
+  filter: EndpointFilter | undefined,
+  memo: JudgmentMemo
 ): boolean {
   if (filter === undefined) return true;
   if (filter.prefix !== undefined && !endpointUnderAnchor(endpoint, filter.prefix)) return false;
@@ -689,9 +703,9 @@ function otherEndpointPasses(
     } catch {
       return false;
     }
+    if (!Object.prototype.hasOwnProperty.call(scene.bodies, split.bodyName)) return false;
     const body = scene.bodies[split.bodyName];
-    if (!body) return false;
-    if (judgeProfile(body, bodyDocument, filter.conformsTo).length > 0) return false;
+    if (judgeProfile(body, bodyDocument, filter.conformsTo, memo).length > 0) return false;
   }
   return true;
 }

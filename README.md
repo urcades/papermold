@@ -10,7 +10,7 @@ Profiles judge structure only — never data. `ContainedElement.data` is opaque 
 
 > **gamecraft counts → paperfold reifies → papermold judges.**
 
-This is design, not limitation: judgments stay language-neutral, every game-significant state becomes structurally visible, saves diff, histories replay, and cheating shows up as a structural anomaly instead of hiding in an opaque blob.
+This keeps judgments language-neutral and makes the markers themselves diffable and replayable. A marker is only a consumer assertion about opaque simulation state: papermold can verify that the marker has the required structure, but it cannot verify that `hp` crossed a threshold or that the consumer emitted the marker honestly. Consumers must update opaque state and its structural markers together, or derive the markers reliably at a boundary.
 
 ## Install
 

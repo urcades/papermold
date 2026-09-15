@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deleteVessel, insertElement } from "paperdoll";
+import { deleteVessel, insertElement, PAPER_DOLL_PROTOCOL, validateDocument } from "paperdoll";
 import type { Body } from "paperdoll";
 import {
   PAPERMOLD_PROTOCOL,
@@ -372,6 +372,166 @@ describe("judge: conformsTo", () => {
     const errors = judge(twoDolls, MATRYOSHKA_PROFILES, "matryoshka");
     expect(errors).toHaveLength(1);
     expect(errors[0].path).toBe("$.profiles.matryoshka.vessels.shell.conformsTo");
+  });
+
+  it("evaluates repeated failing recursive judgments once per body and profile", () => {
+    const recursive = profilesOf({
+      recursive: {
+        atLeast: {
+          n: 1,
+          of: [
+            {
+              vessel: "root",
+              check: { conformsTo: { token: { kind: "nested" }, profile: "recursive" } }
+            },
+            {
+              vessel: "root",
+              check: { conformsTo: { token: { kind: "nested" }, profile: "recursive" } }
+            }
+          ]
+        }
+      }
+    });
+
+    for (const [depth, expectedJudgmentReads] of [
+      [4, 10],
+      [8, 18],
+      [16, 34]
+    ] as const) {
+      let rootReads = 0;
+      const nested = (remaining: number): Body => {
+        const vessels: Body["vessels"] = {
+          root:
+            remaining === 0
+              ? {}
+              : { contains: [{ kind: "nested", body: nested(remaining - 1) }] }
+        };
+        return {
+          root: "root",
+          vessels: new Proxy(vessels, {
+            get(target, key, receiver) {
+              if (key === "root") rootReads += 1;
+              return Reflect.get(target, key, receiver);
+            }
+          })
+        };
+      };
+
+      const body = nested(depth);
+      validateDocument({ protocol: PAPER_DOLL_PROTOCOL, body });
+      const validationReads = rootReads;
+      rootReads = 0;
+
+      expect(judge(body, recursive, "recursive")).toHaveLength(1);
+      expect(rootReads - validationReads).toBe(expectedJudgmentReads);
+    }
+  });
+
+  it("reuses a successful nested judgment for repeated checks", () => {
+    const document = profilesOf({
+      rooted: { vessels: { root: { exists: true } } },
+      wrapper: {
+        atLeast: {
+          n: 2,
+          of: [
+            { vessel: "root", check: { conformsTo: { token: { kind: "nested" }, profile: "rooted" } } },
+            { vessel: "root", check: { conformsTo: { token: { kind: "nested" }, profile: "rooted" } } }
+          ]
+        }
+      }
+    });
+    let rootReads = 0;
+    const childVessels: Body["vessels"] = { root: {} };
+    const child: Body = {
+      root: "root",
+      vessels: new Proxy(childVessels, {
+        get(target, key, receiver) {
+          if (key === "root") rootReads += 1;
+          return Reflect.get(target, key, receiver);
+        }
+      })
+    };
+    const body: Body = {
+      root: "root",
+      vessels: { root: { contains: [{ kind: "nested", body: child }] } }
+    };
+
+    validateDocument({ protocol: PAPER_DOLL_PROTOCOL, body });
+    const validationReads = rootReads;
+    rootReads = 0;
+
+    expect(judge(body, document, "wrapper")).toEqual([]);
+    expect(rootReads - validationReads).toBe(1);
+  });
+
+  it("does not reuse a judgment across top-level calls after the body mutates", () => {
+    const document = profilesOf({
+      marked: { vessels: { root: { containsAtLeast: [{ kind: "mark" }] } } }
+    });
+    const body: Body = {
+      root: "root",
+      vessels: { root: { contains: [{ kind: "mark" }] } }
+    };
+
+    expect(judge(body, document, "marked")).toEqual([]);
+    body.vessels.root.contains = [];
+    expect(judge(body, document, "marked")).toEqual([
+      {
+        path: "$.profiles.marked.vessels.root.containsAtLeast.0",
+        message: 'Body vessel "root" contains no "mark" element.'
+      }
+    ]);
+  });
+
+  it("terminates mutual profile cycles over a finite nested body", () => {
+    const document = profilesOf({
+      odd: { vessels: { root: { conformsTo: { token: { kind: "nested" }, profile: "even" } } } },
+      even: { vessels: { root: { conformsTo: { token: { kind: "nested" }, profile: "odd" } } } }
+    });
+    const body: Body = {
+      root: "root",
+      vessels: {
+        root: {
+          contains: [
+            {
+              kind: "nested",
+              body: {
+                root: "root",
+                vessels: { root: { contains: [{ kind: "nested", body: { root: "root", vessels: { root: {} } } }] } }
+              }
+            }
+          ]
+        }
+      }
+    };
+
+    expect(judge(body, document, "odd")).toHaveLength(1);
+  });
+});
+
+describe("judge: dictionary keys", () => {
+  const constructorProfile = profilesOf({
+    needs: { vessels: { constructor: { exists: true as const } } }
+  });
+
+  it("does not treat an inherited constructor property as a vessel", () => {
+    const body: Body = { root: "root", vessels: { root: {} } };
+    expect(judge(body, constructorProfile, "needs")).toEqual([
+      {
+        path: "$.profiles.needs.vessels.constructor",
+        message: 'Body has no vessel "constructor".'
+      }
+    ]);
+  });
+
+  it("still accepts an explicitly declared constructor vessel and profile", () => {
+    const body: Body = {
+      root: "constructor",
+      vessels: { constructor: {} }
+    };
+    const document = profilesOf({ constructor: constructorProfile.profiles.needs });
+
+    expect(judge(body, document, "constructor")).toEqual([]);
   });
 });
 
