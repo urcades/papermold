@@ -1,8 +1,9 @@
+<a id="papermold-v1"></a>
 # papermold/v1 — Specification
 
-Status: v1, hardened 2026-07-10 (micro-decisions resolved the same day)
-Depends on: paperdoll >= 0.8.2 (the kernel; name-anchored vessel matching and token-based element checks need no element ids, so papermold requires nothing beyond kernel validity)
-Lineage: [`rfc-papermold.md`](rfc-papermold.md) (the pre-RFC; its five decisions are assumed here)
+Status: current v1 protocol dialect
+Depends on: paper-doll/v3
+Historical lineage: [`rfc-papermold.md`](rfc-papermold.md)
 
 papermold is the judgment layer of the paper* family: **structural
 conformance**. A profile is a stencil — a pattern document declaring what a
@@ -12,6 +13,35 @@ check runnable by any validator in any language with the two documents in
 hand and nothing else. This specification is language-independent: the
 document format plus the clause semantics below are the protocol; the
 TypeScript library is one implementation.
+
+## Normative status and operation domains
+<a id="normative-status-and-operation-domains"></a>
+
+This document is normative for `papermold/v1` and `papermold/v2`. Their JSON
+Schemas are structural companions; the RFC is a historical design record.
+Package and dependency versions are listed in the
+[`paper* family compatibility matrix`](https://github.com/urcades/paperdoll/blob/main/docs/family-compatibility.md).
+Structural comparisons use the family-wide equality definitions in the
+normative
+[`paper-doll/v3` specification](https://github.com/urcades/paperdoll/blob/main/docs/spec.md#equality).
+
+`validateProfiles`, `parseProfiles`, `validateSceneProfiles`, and
+`parseSceneProfiles` accept arbitrary finite JSON values. Validators return
+`ProtocolError[]`; parsers return a `Result` containing a deep copy or errors.
+Invalid values do not make them throw. The corresponding `assert*` functions
+throw on failure.
+
+`judge`, `conforms`, `judgeScene`, `conformsScene`, `judgeBody`, and
+`conformsBody` require the relevant paper-doll body or paperchain scene to be
+valid, require the profile document to be valid, and require the selected
+profile id to exist. A caller-domain violation throws. Within that domain,
+`judge*` returns clause failures as `ProtocolError[]` and `conforms*` returns
+the corresponding boolean; nonconformance is not an exception.
+
+These statements concern finite JSON values within ordinary host memory,
+stack, execution, and cancellation limits. Host resource failure is not a
+conformance verdict. Papermold imposes no protocol-level nesting or document
+size cap.
 
 ## The profile document
 
@@ -257,10 +287,11 @@ this walk.
 
 ---
 
+<a id="papermold-v2-scene-profiles"></a>
 # papermold/v2 — Scene profiles
 
 Status: v2, hardened 2026-07-11 (consumer: paperdoll-viewer's versus mode)
-Depends on: paperchain >= 0.1.0 and, through it, the paper-doll/v3 address
+Depends on: paperchain/v1 and, through it, the paper-doll/v3 address
 grammar — but **only for the v2 document kind**. The v1 judgment is unchanged
 and still needs nothing beyond kernel validity; the widened dependency enters
 via `papermold/v2` alone. v1 documents remain valid interchange; v2 is a

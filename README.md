@@ -140,7 +140,7 @@ Profiles-of-scenes shipped as papermold/v2 (above) once versus mode in paperdoll
 
 ## Portability
 
-The protocol is not the TypeScript library — it is the document format plus the clause semantics. [`schema/papermold-v1.schema.json`](schema/papermold-v1.schema.json) and [`schema/papermold-v2.schema.json`](schema/papermold-v2.schema.json) are JSON Schemas (2020-12) capturing the structural laws of each document kind; the semantics beyond schema expressiveness — same-document `conformsTo` resolution, `n <= of.length`, `atLeast <= atMost`, and the judgments themselves — are specified in [`docs/spec.md`](docs/spec.md). Any language can validate profile documents and judge conformance against any paperdoll implementation.
+The protocol is the document format plus the clause semantics in the current normative [`papermold/v1 and papermold/v2 specification`](docs/spec.md). [`schema/papermold-v1.schema.json`](schema/papermold-v1.schema.json) and [`schema/papermold-v2.schema.json`](schema/papermold-v2.schema.json) are structural JSON Schema (2020-12) companions, not complete specifications. Package versions and dependency floors are listed in the [`paper* family compatibility matrix`](https://github.com/urcades/paperdoll/blob/main/docs/family-compatibility.md). Any language can validate profile documents and judge conformance against conforming paperdoll and paperchain implementations.
 
 ## API
 
@@ -153,4 +153,4 @@ Validation is strict: unknown keys anywhere in a profile document are rejected, 
 
 ## Design Notes
 
-See [`docs/rfc-papermold.md`](docs/rfc-papermold.md) for the pre-RFC lineage (the five decisions: name-anchoring, the closed constraint vocabulary, checked-not-monitored, same-document references, conformance always opt-in), and [`docs/spec.md`](docs/spec.md) for the hardened v1 specification with resolved micro-decisions.
+See [`docs/spec.md`](docs/spec.md) for normative behavior. [`docs/rfc-papermold.md`](docs/rfc-papermold.md) is the historical pre-RFC lineage.
